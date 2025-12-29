@@ -109,7 +109,7 @@ function App() {
               <h1 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 Alpha Solar
                 <RotatingText
-                  texts={['Battery Storage System', 'New Solar Atap Scheme', 'Saving Calculator', 'By Hong']}
+                  texts={['Battery Storage System', 'New Solar Atap Scheme', 'Saving Calculator', 'Design By Hong']}
                   mainClassName="rotating-text-box"
                   style={{
                     backgroundColor: '#10b981', // Emerald-500 equivalent for better visibility
