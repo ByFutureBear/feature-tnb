@@ -62,7 +62,6 @@ export const SystemRecommendation: React.FC<Props> = ({ inputs, results }) => {
                             <div className="rec-value-medium">
                                 <CountUpNumber value={results.monthlySolarGeneration} suffix=" kWh/month" decimals={0} />
                             </div>
-                            <span style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: '4px', display: 'block' }}>Based on {inputs.psh} Peak Sun Hours</span>
                         </div>
                         <div className="rec-details">
                             <div className="rec-detail-item">
