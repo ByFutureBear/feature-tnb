@@ -26,7 +26,7 @@ export const CustomerInputs: React.FC<Props> = ({ inputs, onChange }) => {
     const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         let val: any = e.target.value;
         if (e.target.type === 'number' || e.target.type === 'range') {
-            val = parseFloat(val);
+            val = val === '' ? 0 : parseFloat(val);
         }
         if (e.target.type === 'checkbox') {
             val = (e.target as HTMLInputElement).checked;
