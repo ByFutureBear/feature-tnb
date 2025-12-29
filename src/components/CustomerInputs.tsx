@@ -116,6 +116,7 @@ export const CustomerInputs: React.FC<Props> = ({ inputs, onChange }) => {
                             onChange={handleChange(inputs.mode === 'rm' ? 'monthlyBill' : 'monthlyUsage')}
                             min={inputs.mode === 'rm' ? "50" : "100"}
                             style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}
+                            onFocus={(e) => e.target.select()}
                         />
                         <span className="input-suffix">{inputs.mode === 'rm' ? 'RM' : 'kWh'}</span>
                     </div>
@@ -164,6 +165,7 @@ export const CustomerInputs: React.FC<Props> = ({ inputs, onChange }) => {
                             min="1"
                             className="professional-input"
                             style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}
+                            onFocus={(e) => e.target.select()}
                         />
                         <span className="input-suffix">Panels</span>
                     </div>
@@ -235,6 +237,7 @@ export const CustomerInputs: React.FC<Props> = ({ inputs, onChange }) => {
                             step="100"
                             className="professional-input text-right"
                             style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', paddingLeft: '2.5rem' }}
+                            onFocus={(e) => e.target.select()}
                         />
                     </div>
                 </div>
