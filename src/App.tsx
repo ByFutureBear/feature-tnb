@@ -130,7 +130,6 @@ function App() {
                   rotationInterval={3000}
                 />
               </h1>
-              <p className="hero-subtitle">Solar Energy Calculator</p>
             </div>
           </header>
 
