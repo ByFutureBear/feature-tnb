@@ -110,13 +110,22 @@ function App() {
                 Alpha Solar
                 <RotatingText
                   texts={['Battery Storage System', 'Solar Atap', 'Saving']}
-                  mainClassName="px-2 bg-emerald-300 text-black overflow-hidden py-1 justify-center rounded-lg"
+                  mainClassName="rotating-text-box"
+                  style={{
+                    backgroundColor: '#10b981', // Emerald-500 equivalent for better visibility
+                    color: 'white',
+                    padding: '4px 12px',
+                    borderRadius: '8px',
+                    display: 'inline-flex',
+                    justifyContent: 'center',
+                    overflow: 'hidden'
+                  }}
                   staggerFrom={"last"}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "-120%" }}
                   staggerDuration={0.025}
-                  splitLevelClassName="overflow-hidden pb-1"
+                  splitLevelClassName="rotating-text-char"
                   transition={{ type: "spring", damping: 30, stiffness: 400 }}
                   rotationInterval={3000}
                 />

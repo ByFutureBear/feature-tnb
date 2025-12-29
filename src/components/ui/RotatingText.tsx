@@ -185,7 +185,9 @@ const RotatingText = forwardRef<RotatingTextRef, RotatingTextProps>(
                 {...rest}
                 transition={transition}
             >
-                <span className="sr-only">{texts[currentTextIndex]}</span>
+                <span style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>
+                    {texts[currentTextIndex]}
+                </span>
                 <AnimatePresence mode={animatePresenceMode} initial={animatePresenceInitial}>
                     <motion.span
                         key={currentTextIndex}
