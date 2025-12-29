@@ -46,21 +46,19 @@ export const ResultsSection: React.FC<Props> = ({ inputs, results }) => {
                 </div>
 
                 {/* BOTTOM ROW: SAVINGS BREAKDOWN */}
-                <div className="savings-grid-row animate-fade-in">
+                <div className="bill-summary-row animate-fade-in">
                     {/* Monthly Savings */}
                     <div className="result-card-base result-card-green">
-                        <h3>Monthly Savings</h3>
-                        <div className="green-text-value">
+                        <h3 style={{ fontSize: '0.75rem', fontWeight: '700', color: '#166534', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Monthly Savings</h3>
+                        <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#166534' }}>
                             <CountUpNumber value={results.totalSavings} prefix="RM " decimals={2} />
                         </div>
                     </div>
 
-
-
                     {/* Annual Savings */}
                     <div className="result-card-base result-card-green">
-                        <h3>Annual Savings</h3>
-                        <div className="green-text-value">
+                        <h3 style={{ fontSize: '0.75rem', fontWeight: '700', color: '#166534', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Annual Savings</h3>
+                        <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#166534' }}>
                             <CountUpNumber value={annualSavings} prefix="RM " decimals={2} />
                         </div>
                     </div>
