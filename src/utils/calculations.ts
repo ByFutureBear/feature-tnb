@@ -291,6 +291,7 @@ export interface SavingsResult {
     afterSolarBillDetails: BillDetails;
     appliedDomesticRate: number;
     selfConsumptionRate: number;
+    batteryRate: number;
 }
 
 // Calculate ATAP Savings (Scenario E: Selco + Atap)
@@ -298,6 +299,7 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
     const selfConsumptionKwh = Math.min(monthlySolarGeneration, monthlyUsage * (selfConsumptionPercent / 100));
 
     // Note: batteryStorageKwh is passed in as argument now instead of reading DOM
+    const batteryRate = getTariffRate(monthlyUsage);
 
     const exportedSolar = Math.max(0, monthlySolarGeneration - selfConsumptionKwh - batteryStorageKwh);
 
@@ -321,7 +323,7 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
     const billWithSolar = calculateTnbBill(netImportKwh, afaRate);
 
     const directSavings = billWithoutSolar.billAmount - billWithSolar.billAmount;
-    const batterySavings = batteryStorageKwh * RETAIL_TARIFF_LOW;
+    const batterySavings = batteryStorageKwh * batteryRate;
 
     // Determine Domestic Rate based on ROUNDED Net Import
     const dynamicDomesticRate = getDomesticEnergyRate(netImportKwh);
@@ -354,7 +356,8 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
         billDetails: billWithoutSolar,
         afterSolarBillDetails: billWithSolar,
         appliedDomesticRate: dynamicDomesticRate, // Export rate used
-        selfConsumptionRate: selfConsumptionRate
+        selfConsumptionRate: selfConsumptionRate,
+        batteryRate: batteryRate
     };
 }
 
@@ -416,6 +419,7 @@ export function calculateAtapOnlyNoBess(monthlyUsage: number, monthlySolarGenera
         billDetails: billWithoutSolar,
         afterSolarBillDetails: billWithSolar,
         appliedDomesticRate: dynamicDomesticRate,
-        selfConsumptionRate: selfConsumptionRate
+        selfConsumptionRate: selfConsumptionRate,
+        batteryRate: 0
     };
 }

@@ -173,8 +173,8 @@ export const BillBreakdown: React.FC<Props> = ({ results }) => {
                                             <tr>
                                                 <td>Stored in BESS</td>
                                                 <td className="text-right">{results.batteryStorageKwh.toFixed(0)}</td>
-                                                <td className="text-right">0.4443</td>
-                                                <td className="text-right">{(results.batteryStorageKwh * 0.4443).toFixed(2)}</td>
+                                                <td className="text-right">{results.batteryRate.toFixed(4)}</td>
+                                                <td className="text-right">{(results.batteryStorageKwh * results.batteryRate).toFixed(2)}</td>
                                             </tr>
                                         )}
                                         <tr>
@@ -193,7 +193,7 @@ export const BillBreakdown: React.FC<Props> = ({ results }) => {
                                             <td className="pt-2 highlight-text-green">Total Value</td>
                                             <td className="pt-2 text-right">-</td>
                                             <td className="pt-2 text-right">-</td>
-                                            <td className="pt-2 text-right highlight-text-green">{((results.selfConsumptionKwh * results.selfConsumptionRate) + results.atapExportCredit + (results.batteryStorageKwh > 0 ? (results.batteryStorageKwh * 0.4443) : 0)).toFixed(2)}</td>
+                                            <td className="pt-2 text-right highlight-text-green">{((results.selfConsumptionKwh * results.selfConsumptionRate) + results.atapExportCredit + (results.batteryStorageKwh > 0 ? (results.batteryStorageKwh * results.batteryRate) : 0)).toFixed(2)}</td>
                                         </tr>
                                     </tbody>
                                 </table>

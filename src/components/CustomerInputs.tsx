@@ -112,8 +112,12 @@ export const CustomerInputs: React.FC<Props> = ({ inputs, onChange }) => {
                         <input
                             type="number"
                             className="professional-input"
-                            value={inputs.mode === 'rm' ? inputs.monthlyBill : inputs.monthlyUsage}
+                            value={inputs.mode === 'rm'
+                                ? (inputs.monthlyBill === 0 ? '' : inputs.monthlyBill)
+                                : (inputs.monthlyUsage === 0 ? '' : inputs.monthlyUsage)
+                            }
                             onChange={handleChange(inputs.mode === 'rm' ? 'monthlyBill' : 'monthlyUsage')}
+                            placeholder="0"
                             min={inputs.mode === 'rm' ? "50" : "100"}
                             style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}
                             onFocus={(e) => e.target.select()}
@@ -160,8 +164,9 @@ export const CustomerInputs: React.FC<Props> = ({ inputs, onChange }) => {
                     <div className="input-with-suffix">
                         <input
                             type="number"
-                            value={inputs.panelCount}
+                            value={inputs.panelCount === 0 ? '' : inputs.panelCount}
                             onChange={handleChange('panelCount')}
+                            placeholder="0"
                             min="1"
                             className="professional-input"
                             style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}
@@ -232,8 +237,9 @@ export const CustomerInputs: React.FC<Props> = ({ inputs, onChange }) => {
                         <span className="input-prefix">RM</span>
                         <input
                             type="number"
-                            value={inputs.systemPrice}
+                            value={inputs.systemPrice === 0 ? '' : inputs.systemPrice}
                             onChange={handleChange('systemPrice')}
+                            placeholder="0"
                             step="100"
                             className="professional-input text-right"
                             style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', paddingLeft: '2.5rem' }}
