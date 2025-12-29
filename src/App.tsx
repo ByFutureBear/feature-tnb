@@ -6,6 +6,7 @@ import { CustomerInputs } from './components/CustomerInputs';
 import { SystemRecommendation } from './components/SystemRecommendation';
 import { ResultsSection } from './components/ResultsSection';
 import { BillBreakdown } from './components/BillBreakdown';
+import RotatingText from './components/ui/RotatingText';
 import { BatteryVisualizer } from './components/BatteryVisualizer';
 import { Navbar } from './components/Navbar';
 import { AnimatedBackground } from './components/ui/AnimatedBackground';
@@ -105,8 +106,22 @@ function App() {
         <main className="container main-content">
           <header className="hero">
             <div className="hero-content">
-              <h1>Solar Energy Calculator</h1>
-              <p className="hero-subtitle">Battery Energy Storage System | Solar ATAP Scheme</p>
+              <h1 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                Alpha Solar
+                <RotatingText
+                  texts={['Battery Storage System', 'Solar Atap', 'Saving']}
+                  mainClassName="px-2 bg-emerald-300 text-black overflow-hidden py-1 justify-center rounded-lg"
+                  staggerFrom={"last"}
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "-120%" }}
+                  staggerDuration={0.025}
+                  splitLevelClassName="overflow-hidden pb-1"
+                  transition={{ type: "spring", damping: 30, stiffness: 400 }}
+                  rotationInterval={3000}
+                />
+              </h1>
+              <p className="hero-subtitle">Solar Energy Calculator</p>
             </div>
           </header>
 
