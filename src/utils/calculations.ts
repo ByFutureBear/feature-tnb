@@ -278,6 +278,7 @@ export interface SavingsResult {
     selfConsumptionKwh: number;
     selfConsumptionPercent: number;
     batteryStorageKwh: number;
+    netImportKwh: number;
     exportableSolar: number;
     atapOffsetKwh: number;
     bakiKwh: number;
@@ -333,9 +334,20 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
     const selfConsumptionRate = getTariffRate(netImportKwh);
 
     const atapExportCredit = atapOffsetKwh * dynamicDomesticRate;
-    const totalSavings = directSavings + batterySavings + atapExportCredit;
+
+    // Total Actual Savings = (Old Bill - New Bill from Net Import) + Export Credit
+    // Note: billWithSolar is derived from Net Import, so it already accounts for the benefits of Self-Consumption AND BESS Discharge.
+    const realTotalSavings = directSavings + atapExportCredit;
+
+    // For display purposes, we split into "Daytime" and "Nighttime"
+    // Nighttime = Battery Discharge Value + ATAP Export Credit
+    const nighttimeSavingsDisplay = batterySavings + atapExportCredit;
+
+    // Daytime = Remainder (Solar Self-Consumption Value)
+    const daytimeSavingsDisplay = realTotalSavings - nighttimeSavingsDisplay;
+
     const finalBill = Math.max(0, billWithSolar.billAmount - atapExportCredit + incentiveAdjustment);
-    const savingsPercentage = (totalSavings / billWithoutSolar.billAmount) * 100;
+    const savingsPercentage = (realTotalSavings / billWithoutSolar.billAmount) * 100;
 
     return {
         billWithoutSolar: billWithoutSolar.billAmount,
@@ -346,14 +358,17 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
         selfConsumptionKwh: selfConsumptionKwh,
         selfConsumptionPercent: selfConsumptionPercent,
         batteryStorageKwh: batteryStorageKwh,
-        exportableSolar: exportedSolar, // Total generated for export
-        atapOffsetKwh: atapOffsetKwh,   // Amount actually used for offset (capped at net import)
-        bakiKwh: atapBakiKwh,           // Amount carried forward
-        directSavings: directSavings,
-        batterySavings: batterySavings,
+        netImportKwh: netImportKwh,
+        exportableSolar: exportedSolar,
+        atapOffsetKwh: atapOffsetKwh,
+        bakiKwh: atapBakiKwh,
         atapExportCredit: atapExportCredit,
+        // directSavings in UI maps to "Daytime Savings", so we pass the calculated daytime portion
+        directSavings: daytimeSavingsDisplay,
+        batterySavings: batterySavings,
+        // totalSavings should matches the breakdown sum
+        totalSavings: realTotalSavings,
         incentiveAdjustment: incentiveAdjustment,
-        totalSavings: totalSavings,
         savingsPercentage: savingsPercentage,
         billDetails: billWithoutSolar,
         afterSolarBillDetails: billWithSolar,
@@ -366,7 +381,6 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
 // Calculate ATAP Only (No BESS) Savings
 export function calculateAtapOnlyNoBess(monthlyUsage: number, monthlySolarGeneration: number, selfConsumptionPercent: number, afaRate: number): SavingsResult {
     const selfConsumptionKwh = Math.min(monthlySolarGeneration, monthlyUsage * (selfConsumptionPercent / 100));
-    const batteryStorageKwh = 0;
     const exportedSolar = Math.max(0, monthlySolarGeneration - selfConsumptionKwh);
 
     // Calculate original bill to get the original incentive total
@@ -408,7 +422,8 @@ export function calculateAtapOnlyNoBess(monthlyUsage: number, monthlySolarGenera
         monthlySolarGeneration: monthlySolarGeneration,
         selfConsumptionKwh: selfConsumptionKwh,
         selfConsumptionPercent: selfConsumptionPercent,
-        batteryStorageKwh: batteryStorageKwh,
+        batteryStorageKwh: 0,
+        netImportKwh: Math.round(Math.max(0, monthlyUsage - selfConsumptionKwh)),
         exportableSolar: exportedSolar,
         atapOffsetKwh: atapOffsetKwh,
         bakiKwh: atapBakiKwh,
