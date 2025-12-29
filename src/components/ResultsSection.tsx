@@ -16,8 +16,6 @@ export const ResultsSection: React.FC<Props> = ({ inputs, results }) => {
     if (!results) return null;
 
     // Derived values for display
-    const daytimeSavings = results.directSavings;
-    const nighttimeSavings = results.atapExportCredit + results.batterySavings;
     const annualSavings = results.totalSavings * 12;
 
     return (
@@ -57,21 +55,7 @@ export const ResultsSection: React.FC<Props> = ({ inputs, results }) => {
                         </div>
                     </div>
 
-                    {/* Daytime Savings */}
-                    <div className="result-card-base result-card-green">
-                        <h3>Daytime Savings</h3>
-                        <div className="green-text-value">
-                            <CountUpNumber value={daytimeSavings} prefix="RM " decimals={2} />
-                        </div>
-                    </div>
 
-                    {/* Nighttime Savings */}
-                    <div className="result-card-base result-card-green">
-                        <h3>Nighttime Savings</h3>
-                        <div className="green-text-value">
-                            <CountUpNumber value={nighttimeSavings} prefix="RM " decimals={2} />
-                        </div>
-                    </div>
 
                     {/* Annual Savings */}
                     <div className="result-card-base result-card-green">
