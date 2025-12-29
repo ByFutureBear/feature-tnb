@@ -204,7 +204,9 @@ export const CustomerInputs: React.FC<Props> = ({ inputs, onChange }) => {
                                 className="overflow-hidden"
                             >
                                 <div className="battery-qty-wrapper pt-3">
-                                    <label className="text-sm text-gray-600 block mb-1">Battery Units (5.12kWh each)</label>
+                                    <label className="text-sm text-gray-600 block mb-1">
+                                        Battery Units (5.12kWh each) <span className="text-xs text-gray-400 font-normal">(Based on DOD 90%)</span>
+                                    </label>
                                     <div className="number-control">
                                         <button
                                             className="qty-btn"
