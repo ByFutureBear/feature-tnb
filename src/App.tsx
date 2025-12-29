@@ -137,10 +137,10 @@ function App() {
                 <li style={{ marginBottom: '0.5rem' }}>
                   Actual savings are highly dependent on consumption patterns. Variations in monthly usage may result in savings that differ from the estimated figures.
                 </li>
-                <li>
+                <li style={{ marginBottom: '0.5rem' }}>
                   TNB bill estimates are based on the standard (non-Time of Use) tariff and do not include the Automatic Fuel Adjustment (AFA), which is applied monthly and may result in either additional charges or rebates.
                 </li>
-                <li>
+                <li style={{ marginBottom: '0.5rem' }}>
                   Peak Sun Hour (PSH): The solar generation calculation is based on an estimated PSH value. This is an average estimate and not an accurate constant, as actual daily output varies by weather and location.
                 </li>
               </ul>
