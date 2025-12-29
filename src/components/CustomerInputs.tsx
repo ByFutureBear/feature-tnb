@@ -205,7 +205,7 @@ export const CustomerInputs: React.FC<Props> = ({ inputs, onChange }) => {
                             >
                                 <div className="battery-qty-wrapper pt-3">
                                     <label className="text-sm text-gray-600 block mb-1">
-                                        Battery Units (5.12kWh each) <span className="text-xs text-gray-400 font-normal">(Based on DOD 90%)</span>
+                                        Battery Units (5.12kWh each)
                                     </label>
                                     <div className="number-control">
                                         <button
@@ -220,6 +220,9 @@ export const CustomerInputs: React.FC<Props> = ({ inputs, onChange }) => {
                                             className="qty-btn"
                                             onClick={() => onChange('batteryUnits', Math.min(10, inputs.batteryUnits + 1))}
                                         >+</button>
+                                    </div>
+                                    <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-xs text-yellow-700">
+                                        <strong>Note:</strong> Usable capacity is based on 90% Depth of Discharge (DOD).
                                     </div>
                                 </div>
                             </motion.div>
