@@ -133,9 +133,9 @@ export const BillBreakdown: React.FC<Props> = ({ results }) => {
 
                     {/* RIGHT CARD: AFTER SOLAR */}
                     <div>
-                        <div className="detailed-header">
+                        <div className="detailed-header" style={{ background: 'linear-gradient(135deg, #059669 0%, #047857 100%)' }}>
                             <span>TNB Bill Breakdown After Atap</span>
-                            <span className="text-xs font-normal opacity-80 bg-yellow-200 px-2 py-0.5 rounded">
+                            <span className="text-xs font-normal opacity-80 bg-green-200 text-green-800 px-2 py-0.5 rounded">
                                 {results.batteryStorageKwh > 0 ? 'With Battery' : 'No Battery Storage'}
                             </span>
                         </div>
@@ -281,7 +281,7 @@ export const BillBreakdown: React.FC<Props> = ({ results }) => {
 
                                     {/* Final Total Bar */}
                                     <tr className="total-bar">
-                                        <td colSpan={3}>Total After ATAP Only {results.batteryStorageKwh === 0 ? '(No BESS)' : '(With BESS)'} (RM) (F)</td>
+                                        <td colSpan={3}>Total Bill After ATAP(RM)</td>
                                         <td className="text-right">{results.finalBill.toFixed(2)}</td>
                                     </tr>
                                 </tbody>
