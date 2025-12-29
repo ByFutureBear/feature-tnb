@@ -299,7 +299,6 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
     const selfConsumptionKwh = Math.min(monthlySolarGeneration, monthlyUsage * (selfConsumptionPercent / 100));
 
     // Note: batteryStorageKwh is passed in as argument now instead of reading DOM
-    const batteryRate = getTariffRate(monthlyUsage);
 
     const exportedSolar = Math.max(0, monthlySolarGeneration - selfConsumptionKwh - batteryStorageKwh);
 
@@ -315,6 +314,9 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
     // Cap ATAP offset at Net Import
     // Round net import to nearest integer to consistent with TNB billing blocks and display
     const netImportKwh = Math.round(Math.max(0, monthlyUsage - selfConsumptionKwh - batteryStorageKwh));
+
+    // UPDATED: Battery Rate now follows the "After Atap" usage (Net Import)
+    const batteryRate = getTariffRate(netImportKwh);
 
     const atapOffsetKwh = Math.min(exportedSolar, netImportKwh);
     const atapBakiKwh = Math.max(0, exportedSolar - netImportKwh);
