@@ -10,6 +10,8 @@ interface Props {
         panelWattage: number;
         panelCount: number;
         batteryUnits: number;
+        batteryKwh: number;
+        dischargeDepth: number;
         useBattery: boolean;
         psh: number;
     };
@@ -23,8 +25,8 @@ export const SystemRecommendation: React.FC<Props> = ({ inputs, results }) => {
     const dailyGen = (results.monthlySolarGeneration / 30).toFixed(0);
 
 
-    const totalBatteryCapacity = (inputs.batteryUnits * 5.12).toFixed(2);
-    const usableBatteryCapacity = (parseFloat(totalBatteryCapacity) * 0.9).toFixed(2);
+    const totalBatteryCapacity = (inputs.batteryUnits * inputs.batteryKwh).toFixed(2);
+    const usableBatteryCapacity = (parseFloat(totalBatteryCapacity) * (inputs.dischargeDepth / 100)).toFixed(2);
 
     return (
         <motion.div

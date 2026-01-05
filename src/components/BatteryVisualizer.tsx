@@ -4,6 +4,7 @@ import React from 'react';
 interface Props {
     inputs: {
         batteryUnits: number;
+        batteryKwh: number;
         daySplit: number;
         psh: number;
         useBattery: boolean;
@@ -16,7 +17,7 @@ interface Props {
 export const BatteryVisualizer: React.FC<Props> = ({ inputs }) => {
     if (!inputs.useBattery) return null;
 
-    const BATTERY_CAPACITY = 5.12;
+    const batteryCapacity = Math.max(inputs.batteryKwh, 0.1);
     const systemCapacity = (inputs.panelWattage * inputs.panelCount) / 1000;
 
     // Scenarios: Low (2.0), Curr (Input), High (4.5)
@@ -39,8 +40,8 @@ export const BatteryVisualizer: React.FC<Props> = ({ inputs }) => {
         const batteries = [];
 
         for (let i = 1; i <= inputs.batteryUnits; i++) {
-            let chargeAmount = Math.min(BATTERY_CAPACITY, availableForBattery);
-            let chargePercent = (chargeAmount / BATTERY_CAPACITY) * 100;
+            let chargeAmount = Math.min(batteryCapacity, availableForBattery);
+            let chargePercent = (chargeAmount / batteryCapacity) * 100;
 
             // Deduct from available
             availableForBattery -= chargeAmount;

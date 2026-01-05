@@ -1,4 +1,6 @@
 
+export type TariffType = 'standard' | 'tou';
+
 // TNB Tariff Rates (RM/kWh)
 export const RETAIL_TARIFF_LOW = 0.4443;
 export const RETAIL_TARIFF_HIGH = 0.5443;
@@ -11,6 +13,12 @@ export const rates = {
         capacity: 4.55,
         network: 12.85,
         retail: 10.00,
+    },
+    tou: {
+        peakLow: 28.52,
+        offPeakLow: 24.43,
+        peakHigh: 38.52,
+        offPeakHigh: 34.43
     }
 };
 
@@ -63,18 +71,97 @@ export function calculateIncentiveAdjustment(exportedEnergy: number, originalUsa
 }
 
 // Helper to get description text
-export function getEnergyRateDescription(monthlyUsage: number): string {
-    return monthlyUsage > 1500 ? "Energy (37.03 sen/kWh)" : "Energy (27.03 sen/kWh)";
+export function getEnergyRateDescription(monthlyUsage: number, tariffType: TariffType = 'standard'): string {
+    if (tariffType === 'tou') {
+        const touRates = getTouRatesSen(monthlyUsage);
+        return `Energy (TOU Peak ${touRates.peak.toFixed(2)} / Off-Peak ${touRates.offPeak.toFixed(2)} sen/kWh)`;
+    }
+
+    const energyRateSen = monthlyUsage > 1500 ? rates.domestic.energyHigh : rates.domestic.energy;
+    return `Energy (${energyRateSen.toFixed(2)} sen/kWh)`;
 }
+
+const clampPercent = (value: number): number => Math.min(100, Math.max(0, value));
+
+function getTouRatesSen(usage: number): { peak: number; offPeak: number } {
+    const highUsage = usage > 1500;
+    return {
+        peak: highUsage ? rates.tou.peakHigh : rates.tou.peakLow,
+        offPeak: highUsage ? rates.tou.offPeakHigh : rates.tou.offPeakLow
+    };
+}
+
+const getTouBlendedRateSen = (usage: number, daySplit: number): number => {
+    const peakShare = clampPercent(daySplit) / 100;
+    const touRates = getTouRatesSen(usage);
+    return (touRates.peak * peakShare) + (touRates.offPeak * (1 - peakShare));
+};
+
+const getTouOffsetBreakdown = (offsetKwh: number, usageKwh: number, daySplit: number) => {
+    if (offsetKwh <= 0 || usageKwh <= 0) {
+        return {
+            peakOffsetKwh: 0,
+            offPeakOffsetKwh: 0,
+            peakRateRM: 0,
+            offPeakRateRM: 0,
+            peakCredit: 0,
+            offPeakCredit: 0,
+            totalCredit: 0,
+            effectiveRate: 0
+        };
+    }
+
+    const peakShare = clampPercent(daySplit) / 100;
+    const peakUsage = usageKwh * peakShare;
+    const offPeakUsage = Math.max(usageKwh - peakUsage, 0);
+    const touRates = getTouRatesSen(usageKwh);
+    const peakRateRM = touRates.peak / 100;
+    const offPeakRateRM = touRates.offPeak / 100;
+
+    const peakOffset = Math.min(offsetKwh, peakUsage);
+    const offPeakOffset = Math.min(Math.max(offsetKwh - peakOffset, 0), offPeakUsage);
+
+    const peakCredit = peakOffset * peakRateRM;
+    const offPeakCredit = offPeakOffset * offPeakRateRM;
+    const totalCredit = peakCredit + offPeakCredit;
+    const effectiveRate = totalCredit / offsetKwh;
+
+    return {
+        peakOffsetKwh: peakOffset,
+        offPeakOffsetKwh: offPeakOffset,
+        peakRateRM: peakRateRM,
+        offPeakRateRM: offPeakRateRM,
+        peakCredit: peakCredit,
+        offPeakCredit: offPeakCredit,
+        totalCredit: totalCredit,
+        effectiveRate: effectiveRate
+    };
+};
 
 export interface BillDetails {
     billAmount: number;
+    energyRateLabel: string;
+    tariffType: TariffType;
+    energyPeakRateRM: number;
+    energyOffPeakRateRM: number;
     usageNonService: number;
     usageService: number;
     usageTotal: number;
+    usagePeakNonService: number;
+    usagePeakService: number;
+    usagePeakTotal: number;
+    usageOffPeakNonService: number;
+    usageOffPeakService: number;
+    usageOffPeakTotal: number;
     energyNonService: number;
     energyService: number;
     energyTotal: number;
+    energyPeakNonService: number;
+    energyPeakService: number;
+    energyPeakTotal: number;
+    energyOffPeakNonService: number;
+    energyOffPeakService: number;
+    energyOffPeakTotal: number;
     afaNonService: number;
     afaService: number;
     afaTotal: number;
@@ -97,7 +184,7 @@ export interface BillDetails {
 }
 
 // Calculate TNB Bill using the real billing formula
-export function calculateTnbBill(usage: number, afaRate: number): BillDetails {
+export function calculateTnbBill(usage: number, afaRate: number, tariffType: TariffType = 'standard', daySplit: number = 30): BillDetails {
     // Convert usage to numbers and handle NaN
     usage = parseFloat(usage.toString());
     afaRate = parseFloat(afaRate.toString());
@@ -105,18 +192,55 @@ export function calculateTnbBill(usage: number, afaRate: number): BillDetails {
     if (isNaN(usage)) usage = 0;
     if (isNaN(afaRate)) afaRate = 0;
 
-    // Determine tariff rate based on usage
-    const highUsage = usage > 1500;
-    const energyRateSen = highUsage ? rates.domestic.energyHigh : rates.domestic.energy;
-    const energyRateRM = energyRateSen / 100;
-
     // Calculate base and excess usage
     const baseUsage = Math.min(usage, 600);
     const excessUsage = Math.max(usage - 600, 0);
 
     // Calculate energy charges
-    const baseEnergy = baseUsage * energyRateRM;
-    const excessEnergy = excessUsage * energyRateRM;
+    let baseEnergy = 0;
+    let excessEnergy = 0;
+    let usagePeakNonService = 0;
+    let usagePeakService = 0;
+    let usageOffPeakNonService = 0;
+    let usageOffPeakService = 0;
+    let energyPeakNonService = 0;
+    let energyPeakService = 0;
+    let energyOffPeakNonService = 0;
+    let energyOffPeakService = 0;
+    let energyPeakRateRM = 0;
+    let energyOffPeakRateRM = 0;
+
+    if (tariffType === 'tou') {
+        const peakShare = clampPercent(daySplit) / 100;
+        const peakUsage = usage * peakShare;
+        const offPeakUsage = usage - peakUsage;
+        const touRates = getTouRatesSen(usage);
+        const peakRateRM = touRates.peak / 100;
+        const offPeakRateRM = touRates.offPeak / 100;
+        energyPeakRateRM = peakRateRM;
+        energyOffPeakRateRM = offPeakRateRM;
+
+        usagePeakNonService = Math.min(peakUsage, baseUsage);
+        const remainingBase = Math.max(baseUsage - usagePeakNonService, 0);
+        usageOffPeakNonService = Math.min(offPeakUsage, remainingBase);
+
+        usagePeakService = Math.max(peakUsage - usagePeakNonService, 0);
+        usageOffPeakService = Math.max(offPeakUsage - usageOffPeakNonService, 0);
+
+        energyPeakNonService = usagePeakNonService * peakRateRM;
+        energyPeakService = usagePeakService * peakRateRM;
+        energyOffPeakNonService = usageOffPeakNonService * offPeakRateRM;
+        energyOffPeakService = usageOffPeakService * offPeakRateRM;
+
+        baseEnergy = energyPeakNonService + energyOffPeakNonService;
+        excessEnergy = energyPeakService + energyOffPeakService;
+    } else {
+        const highUsage = usage > 1500;
+        const energyRateSen = highUsage ? rates.domestic.energyHigh : rates.domestic.energy;
+        const energyRateRM = energyRateSen / 100;
+        baseEnergy = baseUsage * energyRateRM;
+        excessEnergy = excessUsage * energyRateRM;
+    }
 
     // Calculate other charges
     const capacityRateRM = rates.domestic.capacity / 100;
@@ -172,12 +296,28 @@ export function calculateTnbBill(usage: number, afaRate: number): BillDetails {
 
     return {
         billAmount: grandTotal,
+        energyRateLabel: getEnergyRateDescription(usage, tariffType),
+        tariffType: tariffType,
+        energyPeakRateRM: energyPeakRateRM,
+        energyOffPeakRateRM: energyOffPeakRateRM,
         usageNonService: baseUsage,
         usageService: excessUsage,
         usageTotal: usage,
+        usagePeakNonService: usagePeakNonService,
+        usagePeakService: usagePeakService,
+        usagePeakTotal: usagePeakNonService + usagePeakService,
+        usageOffPeakNonService: usageOffPeakNonService,
+        usageOffPeakService: usageOffPeakService,
+        usageOffPeakTotal: usageOffPeakNonService + usageOffPeakService,
         energyNonService: baseEnergy,
         energyService: excessEnergy,
         energyTotal: baseEnergy + excessEnergy,
+        energyPeakNonService: energyPeakNonService,
+        energyPeakService: energyPeakService,
+        energyPeakTotal: energyPeakNonService + energyPeakService,
+        energyOffPeakNonService: energyOffPeakNonService,
+        energyOffPeakService: energyOffPeakService,
+        energyOffPeakTotal: energyOffPeakNonService + energyOffPeakService,
         afaNonService: baseAFA,
         afaService: excessAFA,
         afaTotal: totalAFA,
@@ -201,14 +341,18 @@ export function calculateTnbBill(usage: number, afaRate: number): BillDetails {
 }
 
 // Helper function to get Domestic Energy Rate
-export function getDomesticEnergyRate(monthlyUsage: number): number {
+export function getDomesticEnergyRate(monthlyUsage: number, tariffType: TariffType = 'standard', daySplit: number = 30): number {
+    if (tariffType === 'tou') {
+        return getTouBlendedRateSen(monthlyUsage, daySplit) / 100;
+    }
+
     return monthlyUsage > 1500 ? (rates.domestic.energyHigh / 100) : (rates.domestic.energy / 100);
 }
 
 // Calculate After Solar Bill
-export function calculateAfterSolarBill(monthlyUsage: number, selfConsumptionKwh: number, afaRate: number): BillDetails {
+export function calculateAfterSolarBill(monthlyUsage: number, selfConsumptionKwh: number, afaRate: number, tariffType: TariffType = 'standard', daySplit: number = 30): BillDetails {
     const gridUsageAfterSolar = Math.max(0, monthlyUsage - selfConsumptionKwh);
-    return calculateTnbBill(gridUsageAfterSolar, afaRate);
+    return calculateTnbBill(gridUsageAfterSolar, afaRate, tariffType, daySplit);
 }
 
 
@@ -220,7 +364,7 @@ export function getTariffRate(monthlyUsage: number): number {
 
 // Convert bill to kWh and vice versa
 // NEW: Accurate reverse calculation (Integer only)
-export function solveUsageFromBill(targetBill: number, afaRate: number): number {
+export function solveUsageFromBill(targetBill: number, afaRate: number, tariffType: TariffType = 'standard', daySplit: number = 30): number {
     if (isNaN(targetBill) || targetBill < 0) return 0;
     let low = 1;
     let high = 10000; // Realistic max kWh for domestic
@@ -234,7 +378,7 @@ export function solveUsageFromBill(targetBill: number, afaRate: number): number 
     while (low <= high && iterations < 50) {
         mid = (low + high) / 2;
 
-        const billDetails = calculateTnbBill(mid, afaRate);
+        const billDetails = calculateTnbBill(mid, afaRate, tariffType, daySplit);
         const resultBill = billDetails.totalBeforeSolar;
         const diff = Math.abs(resultBill - targetBill);
 
@@ -260,8 +404,8 @@ export function solveUsageFromBill(targetBill: number, afaRate: number): number 
     const floorUsage = Math.floor(bestUsage);
     const ceilUsage = Math.ceil(bestUsage);
 
-    const floorBill = calculateTnbBill(floorUsage, afaRate).totalBeforeSolar;
-    const ceilBill = calculateTnbBill(ceilUsage, afaRate).totalBeforeSolar;
+    const floorBill = calculateTnbBill(floorUsage, afaRate, tariffType, daySplit).totalBeforeSolar;
+    const ceilBill = calculateTnbBill(ceilUsage, afaRate, tariffType, daySplit).totalBeforeSolar;
 
     const floorDiff = Math.abs(floorBill - targetBill);
     const ceilDiff = Math.abs(ceilBill - targetBill);
@@ -281,6 +425,12 @@ export interface SavingsResult {
     netImportKwh: number;
     exportableSolar: number;
     atapOffsetKwh: number;
+    atapOffsetPeakKwh: number;
+    atapOffsetOffPeakKwh: number;
+    atapOffsetPeakRate: number;
+    atapOffsetOffPeakRate: number;
+    atapOffsetPeakValue: number;
+    atapOffsetOffPeakValue: number;
     bakiKwh: number;
     directSavings: number;
     batterySavings: number;
@@ -296,7 +446,7 @@ export interface SavingsResult {
 }
 
 // Calculate ATAP Savings (Scenario E: Selco + Atap)
-export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneration: number, selfConsumptionPercent: number, afaRate: number, batteryStorageKwh: number): SavingsResult {
+export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneration: number, selfConsumptionPercent: number, afaRate: number, batteryStorageKwh: number, tariffType: TariffType = 'standard'): SavingsResult {
     const selfConsumptionKwh = Math.min(monthlySolarGeneration, monthlyUsage * (selfConsumptionPercent / 100));
 
     // Note: batteryStorageKwh is passed in as argument now instead of reading DOM
@@ -304,7 +454,7 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
     const exportedSolar = Math.max(0, monthlySolarGeneration - selfConsumptionKwh - batteryStorageKwh);
 
     // Calculate original bill (still needed for billWithoutSolar)
-    const originalBill = calculateTnbBill(monthlyUsage, afaRate);
+    const originalBill = calculateTnbBill(monthlyUsage, afaRate, tariffType, selfConsumptionPercent);
 
     // const originalIncentiveTotal = originalBill.incentiveTotal; // Unused
 
@@ -319,13 +469,18 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
     const netImportKwh = Math.round(Math.max(0, monthlyUsage - selfConsumptionKwh - batteryStorageKwh));
 
     // UPDATED: Battery Rate now follows the "After Atap" usage (Net Import)
-    const batteryRate = getTariffRate(netImportKwh);
+    let batteryRate = getTariffRate(netImportKwh);
+    if (tariffType === 'tou') {
+        const touRates = getTouRatesSen(netImportKwh);
+        const batteryRateSen = touRates.offPeak + rates.domestic.capacity + rates.domestic.network;
+        batteryRate = batteryRateSen / 100;
+    }
 
     const atapOffsetKwh = Math.min(exportedSolar, netImportKwh);
     const atapBakiKwh = Math.max(0, exportedSolar - netImportKwh);
 
     // Calculate Bill With Solar using ROUNDED net usage
-    const billWithSolar = calculateTnbBill(netImportKwh, afaRate);
+    const billWithSolar = calculateTnbBill(netImportKwh, afaRate, tariffType, selfConsumptionPercent);
 
     // FIXED: Calculate Incentive Adjustment based on After Solar (Net Import) values
     // usage -> netImportKwh
@@ -335,12 +490,39 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
     const directSavings = billWithoutSolar.billAmount - billWithSolar.billAmount;
     const batterySavings = batteryStorageKwh * batteryRate;
 
-    // Determine Domestic Rate based on ROUNDED Net Import
-    const dynamicDomesticRate = getDomesticEnergyRate(netImportKwh);
     // Use Target Tariff based on ROUNDED Net Import (0.4443 or 0.5443)
-    const selfConsumptionRate = getTariffRate(netImportKwh);
+    let selfConsumptionRate = getTariffRate(netImportKwh);
+    if (tariffType === 'tou') {
+        const touRates = getTouRatesSen(netImportKwh);
+        const selfConsumptionRateSen = touRates.peak + rates.domestic.capacity + rates.domestic.network;
+        selfConsumptionRate = selfConsumptionRateSen / 100;
+    }
 
-    const atapExportCredit = atapOffsetKwh * dynamicDomesticRate;
+    let atapExportCredit = 0;
+    let appliedDomesticRate = 0;
+    let atapOffsetPeakKwh = 0;
+    let atapOffsetOffPeakKwh = 0;
+    let atapOffsetPeakRate = 0;
+    let atapOffsetOffPeakRate = 0;
+    let atapOffsetPeakValue = 0;
+    let atapOffsetOffPeakValue = 0;
+
+    if (tariffType === 'tou') {
+        const touOffset = getTouOffsetBreakdown(atapOffsetKwh, netImportKwh, selfConsumptionPercent);
+        atapExportCredit = touOffset.totalCredit;
+        appliedDomesticRate = touOffset.effectiveRate;
+        atapOffsetPeakKwh = touOffset.peakOffsetKwh;
+        atapOffsetOffPeakKwh = touOffset.offPeakOffsetKwh;
+        atapOffsetPeakRate = touOffset.peakRateRM;
+        atapOffsetOffPeakRate = touOffset.offPeakRateRM;
+        atapOffsetPeakValue = touOffset.peakCredit;
+        atapOffsetOffPeakValue = touOffset.offPeakCredit;
+    } else {
+        // Determine Domestic Rate based on ROUNDED Net Import
+        const dynamicDomesticRate = getDomesticEnergyRate(netImportKwh, tariffType, selfConsumptionPercent);
+        atapExportCredit = atapOffsetKwh * dynamicDomesticRate;
+        appliedDomesticRate = dynamicDomesticRate;
+    }
 
     // Total Actual Savings = (Old Bill - New Bill from Net Import) + Export Credit
     // Note: billWithSolar is derived from Net Import, so it already accounts for the benefits of Self-Consumption AND BESS Discharge.
@@ -368,6 +550,12 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
         netImportKwh: netImportKwh,
         exportableSolar: exportedSolar,
         atapOffsetKwh: atapOffsetKwh,
+        atapOffsetPeakKwh: atapOffsetPeakKwh,
+        atapOffsetOffPeakKwh: atapOffsetOffPeakKwh,
+        atapOffsetPeakRate: atapOffsetPeakRate,
+        atapOffsetOffPeakRate: atapOffsetOffPeakRate,
+        atapOffsetPeakValue: atapOffsetPeakValue,
+        atapOffsetOffPeakValue: atapOffsetOffPeakValue,
         bakiKwh: atapBakiKwh,
         atapExportCredit: atapExportCredit,
         // directSavings in UI maps to "Daytime Savings", so we pass the calculated daytime portion
@@ -379,19 +567,19 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
         savingsPercentage: savingsPercentage,
         billDetails: billWithoutSolar,
         afterSolarBillDetails: billWithSolar,
-        appliedDomesticRate: dynamicDomesticRate, // Export rate used
+        appliedDomesticRate: appliedDomesticRate, // Export rate used
         selfConsumptionRate: selfConsumptionRate,
         batteryRate: batteryRate
     };
 }
 
 // Calculate ATAP Only (No BESS) Savings
-export function calculateAtapOnlyNoBess(monthlyUsage: number, monthlySolarGeneration: number, selfConsumptionPercent: number, afaRate: number): SavingsResult {
+export function calculateAtapOnlyNoBess(monthlyUsage: number, monthlySolarGeneration: number, selfConsumptionPercent: number, afaRate: number, tariffType: TariffType = 'standard'): SavingsResult {
     const selfConsumptionKwh = Math.min(monthlySolarGeneration, monthlyUsage * (selfConsumptionPercent / 100));
     const exportedSolar = Math.max(0, monthlySolarGeneration - selfConsumptionKwh);
 
     // Calculate original bill to get the original incentive total
-    const originalBill = calculateTnbBill(monthlyUsage, afaRate);
+    const originalBill = calculateTnbBill(monthlyUsage, afaRate, tariffType, selfConsumptionPercent);
     // const originalIncentiveTotal = originalBill.incentiveTotal; // Unused
 
     // FIXED: Moved incentive calculation to after billWithSolar calculation
@@ -406,7 +594,7 @@ export function calculateAtapOnlyNoBess(monthlyUsage: number, monthlySolarGenera
     const atapBakiKwh = Math.max(0, exportedSolar - netImportKwh);
 
     // Calculate Bill With Solar using ROUNDED net usage
-    const billWithSolar = calculateTnbBill(netImportKwh, afaRate);
+    const billWithSolar = calculateTnbBill(netImportKwh, afaRate, tariffType, selfConsumptionPercent);
 
     // FIXED: Calculate Incentive Adjustment based on After Solar values
     const incentiveAdjustment = calculateIncentiveAdjustment(exportedSolar, netImportKwh, billWithSolar.incentiveTotal);
@@ -414,12 +602,39 @@ export function calculateAtapOnlyNoBess(monthlyUsage: number, monthlySolarGenera
     const directSavings = billWithoutSolar.billAmount - billWithSolar.billAmount;
     const batterySavings = 0;
 
-    // FIXED: Determine Domestic Rate based on ROUNDED Net Import
-    const dynamicDomesticRate = getDomesticEnergyRate(netImportKwh);
     // Use Target Tariff based on ROUNDED Net Import (0.4443 or 0.5443)
-    const selfConsumptionRate = getTariffRate(netImportKwh);
+    let selfConsumptionRate = getTariffRate(netImportKwh);
+    if (tariffType === 'tou') {
+        const touRates = getTouRatesSen(netImportKwh);
+        const selfConsumptionRateSen = touRates.peak + rates.domestic.capacity + rates.domestic.network;
+        selfConsumptionRate = selfConsumptionRateSen / 100;
+    }
 
-    const atapExportCredit = atapOffsetKwh * dynamicDomesticRate;
+    let atapExportCredit = 0;
+    let appliedDomesticRate = 0;
+    let atapOffsetPeakKwh = 0;
+    let atapOffsetOffPeakKwh = 0;
+    let atapOffsetPeakRate = 0;
+    let atapOffsetOffPeakRate = 0;
+    let atapOffsetPeakValue = 0;
+    let atapOffsetOffPeakValue = 0;
+
+    if (tariffType === 'tou') {
+        const touOffset = getTouOffsetBreakdown(atapOffsetKwh, netImportKwh, selfConsumptionPercent);
+        atapExportCredit = touOffset.totalCredit;
+        appliedDomesticRate = touOffset.effectiveRate;
+        atapOffsetPeakKwh = touOffset.peakOffsetKwh;
+        atapOffsetOffPeakKwh = touOffset.offPeakOffsetKwh;
+        atapOffsetPeakRate = touOffset.peakRateRM;
+        atapOffsetOffPeakRate = touOffset.offPeakRateRM;
+        atapOffsetPeakValue = touOffset.peakCredit;
+        atapOffsetOffPeakValue = touOffset.offPeakCredit;
+    } else {
+        // FIXED: Determine Domestic Rate based on ROUNDED Net Import
+        const dynamicDomesticRate = getDomesticEnergyRate(netImportKwh, tariffType, selfConsumptionPercent);
+        atapExportCredit = atapOffsetKwh * dynamicDomesticRate;
+        appliedDomesticRate = dynamicDomesticRate;
+    }
     const totalSavings = directSavings + batterySavings + atapExportCredit;
     const finalBill = Math.max(0, billWithSolar.billAmount - atapExportCredit + incentiveAdjustment);
     const savingsPercentage = (totalSavings / billWithoutSolar.billAmount) * 100;
@@ -436,6 +651,12 @@ export function calculateAtapOnlyNoBess(monthlyUsage: number, monthlySolarGenera
         netImportKwh: Math.round(Math.max(0, monthlyUsage - selfConsumptionKwh)),
         exportableSolar: exportedSolar,
         atapOffsetKwh: atapOffsetKwh,
+        atapOffsetPeakKwh: atapOffsetPeakKwh,
+        atapOffsetOffPeakKwh: atapOffsetOffPeakKwh,
+        atapOffsetPeakRate: atapOffsetPeakRate,
+        atapOffsetOffPeakRate: atapOffsetOffPeakRate,
+        atapOffsetPeakValue: atapOffsetPeakValue,
+        atapOffsetOffPeakValue: atapOffsetOffPeakValue,
         bakiKwh: atapBakiKwh,
         directSavings: directSavings,
         batterySavings: batterySavings,
@@ -445,7 +666,7 @@ export function calculateAtapOnlyNoBess(monthlyUsage: number, monthlySolarGenera
         savingsPercentage: savingsPercentage,
         billDetails: billWithoutSolar,
         afterSolarBillDetails: billWithSolar,
-        appliedDomesticRate: dynamicDomesticRate,
+        appliedDomesticRate: appliedDomesticRate,
         selfConsumptionRate: selfConsumptionRate,
         batteryRate: 0
     };

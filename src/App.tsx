@@ -25,7 +25,8 @@ function App() {
     dischargeDepth: 90,
     useBattery: false,
     systemPrice: 0,
-    mode: 'kwh' as 'kwh' | 'rm'
+    mode: 'kwh' as 'kwh' | 'rm',
+    tariffType: 'standard' as 'standard' | 'tou'
   });
 
   const [results, setResults] = useState<any>(null);
@@ -39,17 +40,47 @@ function App() {
   const handleInputChange = (field: string, value: any) => {
     let newInputs = { ...inputs, [field]: value };
 
+    if (field === 'touUsage') {
+      const totalUsage = value?.total ?? 0;
+      const nextDaySplit = value?.daySplit ?? 0;
+      newInputs = { ...inputs, monthlyUsage: totalUsage, daySplit: nextDaySplit };
+      const bill = calculateTnbBill(totalUsage, newInputs.afa, newInputs.tariffType, nextDaySplit).totalBeforeSolar;
+      newInputs.monthlyBill = parseFloat(bill.toFixed(2));
+      setInputs(newInputs);
+      return;
+    }
+
     if (field === 'monthlyBill' && newInputs.mode === 'rm') {
-      const usage = solveUsageFromBill(value, newInputs.afa);
+      const usage = solveUsageFromBill(value, newInputs.afa, newInputs.tariffType, newInputs.daySplit);
       newInputs.monthlyUsage = usage;
     }
     else if (field === 'monthlyUsage' && newInputs.mode === 'kwh') {
-      const bill = calculateTnbBill(value, newInputs.afa).totalBeforeSolar;
+      const bill = calculateTnbBill(value, newInputs.afa, newInputs.tariffType, newInputs.daySplit).totalBeforeSolar;
       newInputs.monthlyBill = parseFloat(bill.toFixed(2));
     }
     else if (field === 'mode') {
       if (value === 'rm') {
-        const bill = calculateTnbBill(newInputs.monthlyUsage, newInputs.afa).totalBeforeSolar;
+        const bill = calculateTnbBill(newInputs.monthlyUsage, newInputs.afa, newInputs.tariffType, newInputs.daySplit).totalBeforeSolar;
+        newInputs.monthlyBill = parseFloat(bill.toFixed(2));
+      }
+    }
+
+    if (field === 'tariffType') {
+      if (newInputs.mode === 'rm') {
+        const usage = solveUsageFromBill(newInputs.monthlyBill, newInputs.afa, newInputs.tariffType, newInputs.daySplit);
+        newInputs.monthlyUsage = usage;
+      } else {
+        const bill = calculateTnbBill(newInputs.monthlyUsage, newInputs.afa, newInputs.tariffType, newInputs.daySplit).totalBeforeSolar;
+        newInputs.monthlyBill = parseFloat(bill.toFixed(2));
+      }
+    }
+
+    if (field === 'daySplit' && newInputs.tariffType === 'tou') {
+      if (newInputs.mode === 'rm') {
+        const usage = solveUsageFromBill(newInputs.monthlyBill, newInputs.afa, newInputs.tariffType, newInputs.daySplit);
+        newInputs.monthlyUsage = usage;
+      } else {
+        const bill = calculateTnbBill(newInputs.monthlyUsage, newInputs.afa, newInputs.tariffType, newInputs.daySplit).totalBeforeSolar;
         newInputs.monthlyBill = parseFloat(bill.toFixed(2));
       }
     }
@@ -91,7 +122,8 @@ function App() {
       monthlyGeneration,
       inputs.daySplit,
       inputs.afa,
-      monthlyStored
+      monthlyStored,
+      inputs.tariffType
     );
 
     setResults(res);
@@ -101,7 +133,7 @@ function App() {
   return (
     <AnimatedBackground>
       <div className="app-wrapper">
-        <Navbar />
+        <Navbar tariffType={inputs.tariffType} onTariffChange={(value) => handleInputChange('tariffType', value)} />
 
         <main className="container main-content">
           <header className="hero">
@@ -161,7 +193,7 @@ function App() {
                   Actual savings are highly dependent on consumption patterns. Variations in monthly usage may result in savings that differ from the estimated figures.
                 </li>
                 <li style={{ marginBottom: '0.5rem' }}>
-                  TNB bill estimates are based on the standard (non-Time of Use) tariff and do not include the Automatic Fuel Adjustment (AFA), which is applied monthly and may result in either additional charges or rebates.
+                  TNB bill estimates are based on the selected tariff (Standard or Time of Use) and do not include the Automatic Fuel Adjustment (AFA), which is applied monthly and may result in either additional charges or rebates.
                 </li>
                 <li style={{ marginBottom: '0.5rem' }}>
                   Peak Sun Hour (PSH): The solar generation calculation is based on an estimated PSH value. This is an average estimate and not an accurate constant, as actual daily output varies by weather and location.

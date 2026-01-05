@@ -13,6 +13,13 @@ export const BillBreakdown: React.FC<Props> = ({ results }) => {
 
     const before = results.billDetails;
     const after = results.afterSolarBillDetails;
+    const isTou = before.tariffType === 'tou';
+    const beforePeakRateRm = before.energyPeakRateRM;
+    const beforeOffPeakRateRm = before.energyOffPeakRateRM;
+    const afterPeakRateRm = after.energyPeakRateRM;
+    const afterOffPeakRateRm = after.energyOffPeakRateRM;
+
+    const formatUsageValue = (value: number) => value.toFixed(0);
 
     // Helper to render rows with tax splits
     const renderRow = (label: string, subLabel: string, nonService: number, service: number) => {
@@ -78,17 +85,46 @@ export const BillBreakdown: React.FC<Props> = ({ results }) => {
                                 </thead>
                                 <tbody>
                                     {/* Usage Row */}
-                                    <tr>
-                                        <td>
-                                            <div className="font-medium">Your Usage (kWh)</div>
-                                        </td>
-                                        <td className="text-right">{before.usageNonService}</td>
-                                        <td className="text-right">{before.usageService}</td>
-                                        <td className="text-right font-medium">{before.usageTotal}</td>
-                                    </tr>
+                                    {!isTou && (
+                                        <tr>
+                                            <td>
+                                                <div className="font-medium">Your Usage (kWh)</div>
+                                            </td>
+                                            <td className="text-right">{before.usageNonService}</td>
+                                            <td className="text-right">{before.usageService}</td>
+                                            <td className="text-right font-medium">{before.usageTotal}</td>
+                                        </tr>
+                                    )}
+
+                                    {isTou && (
+                                        <>
+                                            <tr>
+                                                <td>
+                                                    <div className="font-medium">Your Usage Peak (kWh)</div>
+                                                </td>
+                                                <td className="text-right">{formatUsageValue(before.usagePeakNonService)}</td>
+                                                <td className="text-right">{formatUsageValue(before.usagePeakService)}</td>
+                                                <td className="text-right font-medium">{formatUsageValue(before.usagePeakTotal)}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div className="font-medium">Your Usage Off Peak (kWh)</div>
+                                                </td>
+                                                <td className="text-right">{formatUsageValue(before.usageOffPeakNonService)}</td>
+                                                <td className="text-right">{formatUsageValue(before.usageOffPeakService)}</td>
+                                                <td className="text-right font-medium">{formatUsageValue(before.usageOffPeakTotal)}</td>
+                                            </tr>
+                                        </>
+                                    )}
 
                                     {/* Charges */}
-                                    {renderRow(`Energy (${before.usageTotal > 1500 ? '37.03' : '27.03'} sen/kWh)`, '', before.energyNonService, before.energyService)}
+                                    {!isTou && renderRow(before.energyRateLabel, '', before.energyNonService, before.energyService)}
+                                    {isTou && (
+                                        <>
+                                            {renderRow(`Energy Peak (RM ${beforePeakRateRm.toFixed(4)}/kWh)`, '', before.energyPeakNonService, before.energyPeakService)}
+                                            {renderRow(`Energy Off Peak (RM ${beforeOffPeakRateRm.toFixed(4)}/kWh)`, '', before.energyOffPeakNonService, before.energyOffPeakService)}
+                                        </>
+                                    )}
                                     {renderRow('Automatic Fuel Adjustment (AFA)', '', before.afaNonService, before.afaService)}
                                     {renderRow('Capacity (4.55 sen/kWh)', '', before.capacityNonService, before.capacityService)}
                                     {renderRow('Network (12.85 sen/kWh)', '', before.networkNonService, before.networkService)}
@@ -177,12 +213,30 @@ export const BillBreakdown: React.FC<Props> = ({ results }) => {
                                                 <td className="text-right">{(results.batteryStorageKwh * results.batteryRate).toFixed(2)}</td>
                                             </tr>
                                         )}
-                                        <tr>
-                                            <td>ATAP Offset <span className="text-xs text-gray-500">(Domestic Energy Charge Rate)</span></td>
-                                            <td className="text-right">{results.atapOffsetKwh.toFixed(0)}</td>
-                                            <td className="text-right">{results.appliedDomesticRate.toFixed(4)}</td>
-                                            <td className="text-right">{results.atapExportCredit.toFixed(2)}</td>
-                                        </tr>
+                                        {!isTou && (
+                                            <tr>
+                                                <td>ATAP Offset <span className="text-xs text-gray-500">(Domestic Energy Charge Rate)</span></td>
+                                                <td className="text-right">{results.atapOffsetKwh.toFixed(0)}</td>
+                                                <td className="text-right">{results.appliedDomesticRate.toFixed(4)}</td>
+                                                <td className="text-right">{results.atapExportCredit.toFixed(2)}</td>
+                                            </tr>
+                                        )}
+                                        {isTou && results.atapOffsetPeakKwh > 0 && (
+                                            <tr>
+                                                <td>ATAP Offset Peak <span className="text-xs text-gray-500">(Energy Peak Rate)</span></td>
+                                                <td className="text-right">{results.atapOffsetPeakKwh.toFixed(0)}</td>
+                                                <td className="text-right">{results.atapOffsetPeakRate.toFixed(4)}</td>
+                                                <td className="text-right">{results.atapOffsetPeakValue.toFixed(2)}</td>
+                                            </tr>
+                                        )}
+                                        {isTou && results.atapOffsetOffPeakKwh > 0 && (
+                                            <tr>
+                                                <td>ATAP Offset Off Peak <span className="text-xs text-gray-500">(Energy Off Peak Rate)</span></td>
+                                                <td className="text-right">{results.atapOffsetOffPeakKwh.toFixed(0)}</td>
+                                                <td className="text-right">{results.atapOffsetOffPeakRate.toFixed(4)}</td>
+                                                <td className="text-right">{results.atapOffsetOffPeakValue.toFixed(2)}</td>
+                                            </tr>
+                                        )}
                                         <tr>
                                             <td>Baki <span className="text-xs text-gray-500">(Carry Forward)</span></td>
                                             <td className="text-right">{results.bakiKwh.toFixed(0)}</td>
@@ -211,17 +265,46 @@ export const BillBreakdown: React.FC<Props> = ({ results }) => {
                                 </thead>
                                 <tbody>
                                     {/* Usage Row */}
-                                    <tr>
-                                        <td>
-                                            <div className="font-medium">Your Usage (kWh)</div>
-                                        </td>
-                                        <td className="text-right">{after.usageNonService}</td>
-                                        <td className="text-right">{after.usageService}</td>
-                                        <td className="text-right font-medium">{after.usageTotal}</td>
-                                    </tr>
+                                    {!isTou && (
+                                        <tr>
+                                            <td>
+                                                <div className="font-medium">Your Usage (kWh)</div>
+                                            </td>
+                                            <td className="text-right">{after.usageNonService}</td>
+                                            <td className="text-right">{after.usageService}</td>
+                                            <td className="text-right font-medium">{after.usageTotal}</td>
+                                        </tr>
+                                    )}
+
+                                    {isTou && (
+                                        <>
+                                            <tr>
+                                                <td>
+                                                    <div className="font-medium">Your Usage Peak (kWh)</div>
+                                                </td>
+                                                <td className="text-right">{formatUsageValue(after.usagePeakNonService)}</td>
+                                                <td className="text-right">{formatUsageValue(after.usagePeakService)}</td>
+                                                <td className="text-right font-medium">{formatUsageValue(after.usagePeakTotal)}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div className="font-medium">Your Usage Off Peak (kWh)</div>
+                                                </td>
+                                                <td className="text-right">{formatUsageValue(after.usageOffPeakNonService)}</td>
+                                                <td className="text-right">{formatUsageValue(after.usageOffPeakService)}</td>
+                                                <td className="text-right font-medium">{formatUsageValue(after.usageOffPeakTotal)}</td>
+                                            </tr>
+                                        </>
+                                    )}
 
                                     {/* Charges */}
-                                    {renderRow(`Energy (${after.usageTotal > 1500 ? '37.03' : '27.03'} sen/kWh)`, '', after.energyNonService, after.energyService)}
+                                    {!isTou && renderRow(after.energyRateLabel, '', after.energyNonService, after.energyService)}
+                                    {isTou && (
+                                        <>
+                                            {renderRow(`Energy Peak (RM ${afterPeakRateRm.toFixed(4)}/kWh)`, '', after.energyPeakNonService, after.energyPeakService)}
+                                            {renderRow(`Energy Off Peak (RM ${afterOffPeakRateRm.toFixed(4)}/kWh)`, '', after.energyOffPeakNonService, after.energyOffPeakService)}
+                                        </>
+                                    )}
                                     {renderRow('Automatic Fuel Adjustment (AFA)', '', after.afaNonService, after.afaService)}
                                     {renderRow('Capacity (4.55 sen/kWh)', '', after.capacityNonService, after.capacityService)}
                                     {renderRow('Network (12.85 sen/kWh)', '', after.networkNonService, after.networkService)}
@@ -272,7 +355,14 @@ export const BillBreakdown: React.FC<Props> = ({ results }) => {
                                     <tr>
                                         <td colSpan={3} className="py-2">
                                             <div>ATAP Offset (Domestic Energy Charge Rate)</div>
-                                            <div className="text-xs text-gray-500">Offset Rate - RM {results.appliedDomesticRate.toFixed(4)}</div>
+                                            {!isTou && (
+                                                <div className="text-xs text-gray-500">Offset Rate - RM {results.appliedDomesticRate.toFixed(4)}</div>
+                                            )}
+                                            {isTou && (
+                                                <div className="text-xs text-gray-500">
+                                                    Peak RM {results.atapOffsetPeakRate.toFixed(4)} / Off-Peak RM {results.atapOffsetOffPeakRate.toFixed(4)}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="text-right py-2 text-green-700 font-bold">
                                             -{results.atapExportCredit.toFixed(2)}
