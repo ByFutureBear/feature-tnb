@@ -303,12 +303,14 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
 
     const exportedSolar = Math.max(0, monthlySolarGeneration - selfConsumptionKwh - batteryStorageKwh);
 
-    // Calculate original bill to get the original incentive total
+    // Calculate original bill (still needed for billWithoutSolar)
     const originalBill = calculateTnbBill(monthlyUsage, afaRate);
-    const originalIncentiveTotal = originalBill.incentiveTotal;
 
-    // FIXED: Pass the original incentive total to ensure we don't exceed it
-    const incentiveAdjustment = calculateIncentiveAdjustment(exportedSolar, monthlyUsage, originalIncentiveTotal);
+    // const originalIncentiveTotal = originalBill.incentiveTotal; // Unused
+
+
+    // FIXED: Moved incentive calculation to after billWithSolar calculation to use Net Import values
+    // const incentiveAdjustment = calculateIncentiveAdjustment(exportedSolar, monthlyUsage, originalIncentiveTotal);
 
     const billWithoutSolar = originalBill;
 
@@ -324,6 +326,11 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
 
     // Calculate Bill With Solar using ROUNDED net usage
     const billWithSolar = calculateTnbBill(netImportKwh, afaRate);
+
+    // FIXED: Calculate Incentive Adjustment based on After Solar (Net Import) values
+    // usage -> netImportKwh
+    // impact limit -> billWithSolar.incentiveTotal
+    const incentiveAdjustment = calculateIncentiveAdjustment(exportedSolar, netImportKwh, billWithSolar.incentiveTotal);
 
     const directSavings = billWithoutSolar.billAmount - billWithSolar.billAmount;
     const batterySavings = batteryStorageKwh * batteryRate;
@@ -385,10 +392,10 @@ export function calculateAtapOnlyNoBess(monthlyUsage: number, monthlySolarGenera
 
     // Calculate original bill to get the original incentive total
     const originalBill = calculateTnbBill(monthlyUsage, afaRate);
-    const originalIncentiveTotal = originalBill.incentiveTotal;
+    // const originalIncentiveTotal = originalBill.incentiveTotal; // Unused
 
-    // FIXED: Pass the original incentive total to ensure we don't exceed it
-    const incentiveAdjustment = calculateIncentiveAdjustment(exportedSolar, monthlyUsage, originalIncentiveTotal);
+    // FIXED: Moved incentive calculation to after billWithSolar calculation
+    // const incentiveAdjustment = calculateIncentiveAdjustment(exportedSolar, monthlyUsage, originalIncentiveTotal);
 
     const billWithoutSolar = originalBill;
 
@@ -400,6 +407,9 @@ export function calculateAtapOnlyNoBess(monthlyUsage: number, monthlySolarGenera
 
     // Calculate Bill With Solar using ROUNDED net usage
     const billWithSolar = calculateTnbBill(netImportKwh, afaRate);
+
+    // FIXED: Calculate Incentive Adjustment based on After Solar values
+    const incentiveAdjustment = calculateIncentiveAdjustment(exportedSolar, netImportKwh, billWithSolar.incentiveTotal);
 
     const directSavings = billWithoutSolar.billAmount - billWithSolar.billAmount;
     const batterySavings = 0;
