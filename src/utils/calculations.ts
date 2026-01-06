@@ -526,7 +526,7 @@ export function calculateAtapSavings(monthlyUsage: number, monthlySolarGeneratio
 
     // Total Actual Savings = (Old Bill - New Bill from Net Import) + Export Credit
     // Note: billWithSolar is derived from Net Import, so it already accounts for the benefits of Self-Consumption AND BESS Discharge.
-    const realTotalSavings = directSavings + atapExportCredit;
+    const realTotalSavings = directSavings + atapExportCredit - incentiveAdjustment;
 
     // For display purposes, we split into "Daytime" and "Nighttime"
     // Nighttime = Battery Discharge Value + ATAP Export Credit
